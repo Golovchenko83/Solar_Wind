@@ -15,7 +15,7 @@ Adafruit_VEML6075 uv = Adafruit_VEML6075();
 BH1750 lightMeter(0x23);
 WiFiClient espClient;
 PubSubClient client(espClient);
-Adafruit_ADS1015 ads;
+Adafruit_ADS1115 ads;
 // (период, мс), (0 не запущен / 1 запущен), (режим: 0 период / 1 таймер)
 TimerMs OTA_Wifi(10, 1, 0);
 TimerMs wind_data(7500, 1, 0);
@@ -26,7 +26,7 @@ const char *mqtt_server = "192.168.1.221";
 const char *mqtt_reset = "solar-wind_reset"; // Имя топика для перезагрузки
 String s;
 int data, grafig = 0, wind_sr_tik = 0;
-float wind_sr = 0;
+float wind_sr = 0, wind_poryvy = 0;
 unsigned long wind_tik = 0, t2 = 0, wind_raw = 0;
 uint8_t pinD, pinLock = 0;
 
@@ -104,6 +104,10 @@ void loop()
     if (wind_send > 0)
     {
       wind_m = 1900 / wind_send; // в метры секунды
+      if (wind_m > wind_poryvy)
+      {
+        wind_poryvy = wind_m;
+      }
       wind_sr = wind_sr + wind_m;
       wind_sr_tik++;
     }
@@ -113,23 +117,24 @@ void loop()
     publish_send("lux", lux1, 0);
     // 77 - "0"
     float lux_analog = ads.readADC_SingleEnded(1);
-    // lux_analog=map(lux_analog,77,xx,0,xxx);
+    float lux_analog_lx;
+    lux_analog_lx=map(lux_analog,1700,15624,0,42213);
     publish_send("lux_analog", lux_analog, 0);
+    publish_send("lux_analog_lx", lux_analog_lx, 0);
     float UV = uv.readUVI();
     publish_send("UV", UV, 1);
 
     grafig++;
-    if (grafig == 80 || grafig == 160)
+    if (grafig > 120)
     {
       wind_sr = wind_sr / wind_sr_tik;
       publish_send("wind_graf", wind_sr, 1);
+      publish_send("wind_poryvy", wind_poryvy, 1);
       publish_send("lux_grfig", lux1, 1);
       wind_sr = 0;
       wind_sr_tik = 0;
-      if (grafig == 160)
-      {
-        grafig = 0;
-      }
+      wind_poryvy = 0;
+      grafig = 0;
     }
 
     wind_tik = 0;
