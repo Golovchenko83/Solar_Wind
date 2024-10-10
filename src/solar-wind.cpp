@@ -25,9 +25,9 @@ const char *password = "sl908908908908sl"; // пароль точки досту
 const char *mqtt_server = "192.168.1.221";
 const char *mqtt_reset = "solar-wind_reset"; // Имя топика для перезагрузки
 String s;
-int data, grafig = 0, wind_sr_tik = 0;
-float wind_sr = 0, wind_poryvy = 0;
-unsigned long wind_tik = 0, t2 = 0, wind_raw = 0;
+int data, grafig = 0, wind_sr_tik = 0, sensor_tik = 0;
+float wind_sr = 0, wind_poryvy = 0, uv_sr = 0;
+unsigned long wind_tik = 0, t2 = 0, wind_raw = 0, lux_sr = 0;
 uint8_t pinD, pinLock = 0;
 
 void callback(char *topic, byte *payload, unsigned int length) // Функция Приема сообщений
@@ -94,13 +94,15 @@ void loop()
 
   if (wind_data.tick())
   {
+    sensor_tik++;
     int wind = 0;
-    if (wind_raw > 0 && wind_tik < 30)
+    if (wind_raw > 0 && wind_tik < 60)
     {
       wind = wind_raw / wind_tik;
     }
     float wind_send = wind;
     float wind_m = 0;
+    publish_send("wind_time", wind_send, 1);
     if (wind_send > 0)
     {
       wind_m = 1900 / wind_send; // в метры секунды
@@ -111,30 +113,59 @@ void loop()
       wind_sr = wind_sr + wind_m;
       wind_sr_tik++;
     }
-    publish_send("wind_t", wind_send, 0); // время одного оборота
-    publish_send("wind", wind_m, 1);      // метры секунды
+    publish_send("wind", wind_m, 1); // метры секунды
     float lux1 = lightMeter.readLightLevel();
+    lux_sr = lux_sr + lux1;
     publish_send("lux", lux1, 0);
     // 77 - "0"
     float lux_analog = ads.readADC_SingleEnded(1);
     float lux_analog_lx;
-    lux_analog_lx=map(lux_analog,1700,15624,0,42213);
+    lux_analog_lx = map(lux_analog, 1245, 15624, 0, 42213);
+    if (lux_analog_lx < 0)
+    {
+      lux_analog_lx = 0;
+    }
+
     publish_send("lux_analog", lux_analog, 0);
     publish_send("lux_analog_lx", lux_analog_lx, 0);
     float UV = uv.readUVI();
-    publish_send("UV", UV, 1);
+    uv_sr = uv_sr + UV;
 
     grafig++;
     if (grafig > 120)
     {
+      // средние значение УФ
+      if (uv_sr > 0)
+      {
+        uv_sr = uv_sr / sensor_tik;
+      }
+      else
+      {
+        uv_sr = 0;
+      }
+      // средние значение Освещенность
+
+      if (lux_sr > 0)
+      {
+        lux1 = lux_sr / sensor_tik;
+      }
+      else
+      {
+        lux_sr = 0;
+      }
+
       wind_sr = wind_sr / wind_sr_tik;
       publish_send("wind_graf", wind_sr, 1);
       publish_send("wind_poryvy", wind_poryvy, 1);
-      publish_send("lux_grfig", lux1, 1);
+      publish_send("lux_grfig", lux1, 0);
+      publish_send("UV", uv_sr, 1);
       wind_sr = 0;
+      sensor_tik = 0;
       wind_sr_tik = 0;
       wind_poryvy = 0;
       grafig = 0;
+      uv_sr = 0;
+      lux_sr = 0;
     }
 
     wind_tik = 0;
