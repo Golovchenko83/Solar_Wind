@@ -153,8 +153,19 @@ void loop()
       {
         lux_sr = 0;
       }
-
-      wind_sr = wind_sr / wind_sr_tik;
+      if (wind_sr_tik > 0)
+      {
+        wind_sr = wind_sr / wind_sr_tik;
+      }
+      // проверка на дребезг при слабом ветре
+      if ((wind_poryvy - wind_sr) > 7)
+      {
+        wind_poryvy = wind_sr;
+      }
+      if (wind_poryvy != 0 || wind_sr != 0)
+      {
+        wind_sr = (wind_poryvy + wind_sr) / 2; // корректировка среднего ветра относительно порывов
+      }
       publish_send("wind_graf", wind_sr, 1);
       publish_send("wind_poryvy", wind_poryvy, 1);
       publish_send("lux_grfig", lux1, 0);
