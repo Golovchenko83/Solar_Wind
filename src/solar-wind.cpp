@@ -102,7 +102,7 @@ void loop()
     }
     float wind_send = wind;
     float wind_m = 0;
-    publish_send("wind_time", wind_send, 1);
+  //  publish_send("wind_time", wind_send, 1);
     if (wind_send > 0)
     {
       wind_m = 1900 / wind_send; // в метры секунды
@@ -126,8 +126,8 @@ void loop()
       lux_analog_lx = 0;
     }
 
-    publish_send("lux_analog", lux_analog, 0);
-    publish_send("lux_analog_lx", lux_analog_lx, 0);
+   // publish_send("lux_analog", lux_analog, 0);
+  //  publish_send("lux_analog_lx", lux_analog_lx, 0);
     float UV = uv.readUVI();
     uv_sr = uv_sr + UV;
 
